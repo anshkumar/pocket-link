@@ -43,6 +43,15 @@ Lessons from bring-up:
 On a Pico the green LED is solid when connected and blinks while call audio flows. The RP2040-Zero has no plain LED,
 so use the status command instead.
 
+### Updating from the phone
+
+Android sees the adapter's `RPI-RP2` drive but will not mount it, so the Pocket app updates the firmware itself:
+it reboots the adapter into the bootloader (data-channel `CTRL 0x02`) and speaks the RP2040 bootloader's USB
+protocol (PICOBOOT, the one picotool uses: exclusive access, exit XIP, erase, write, reboot) through the Android
+USB host API; see `LinkFlasher.kt` in the app. The app offers the update on the Pocket Link card when the adapter
+reports an older version than https://pocketide.com/pocket-link/firmware.json. The bootloader is in ROM, so a
+failed write is a retry, never a brick.
+
 ## 2. Test on the Linux PC (no phone)
 
 ```sh
