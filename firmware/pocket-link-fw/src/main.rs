@@ -5,6 +5,8 @@
 //!     "microphone" (us -> phone). Android routes call audio to it like any USB-C headset.
 //!   * Vendor data interface (class 0xFF, bulk IN/OUT, 64-byte packets): the Pocket app
 //!     receives the caller's audio and sends back the agent's voice, both as 16 kHz mono S16LE.
+//!   * HID interface (touch screen + keyboard + consumer control): the app sends finished
+//!     HID reports over the data interface and the phone takes them as touches and keys.
 //!
 //! There is no microphone or speaker on the board: audio is looped between the two interfaces.
 //! See PROTOCOL.md for the packet format.
@@ -12,6 +14,7 @@
 #![no_main]
 
 mod fir;
+mod hid;
 mod resample;
 mod ring;
 mod vendor;
@@ -25,6 +28,7 @@ use hal::{clocks::init_clocks_and_plls, pac, usb::UsbBus, Clock, Sio, Watchdog};
 use usb_device::{class_prelude::*, prelude::*};
 use usbd_audio::{AudioClassBuilder, Format, StreamConfig, TerminalType};
 
+use hid::Hid;
 use resample::{Decimator3, Interpolator3};
 use ring::Ring;
 use vendor::VendorData;
@@ -35,7 +39,7 @@ pub static BOOT2_FIRMWARE: [u8; 256] = rp2040_boot2::BOOT_LOADER_W25Q080;
 
 const XTAL_HZ: u32 = 12_000_000;
 const FW_MAJOR: u8 = 0;
-const FW_MINOR: u8 = 1;
+const FW_MINOR: u8 = 2;
 
 // USB identity. 0x1209/0x0001 is the pid.codes *test* ID: fine for development,
 // register a real PID (https://pid.codes) before shipping units.
@@ -47,6 +51,7 @@ const MAGIC: u8 = 0x50;
 const T_PCM: u8 = 0x01;
 const T_STATUS: u8 = 0x02;
 const T_CTRL: u8 = 0x03;
+const T_HID: u8 = 0x04;
 const CTRL_FLUSH_MIC: u8 = 0x01;
 const CTRL_BOOTLOADER: u8 = 0x02;
 const CTRL_STATUS: u8 = 0x03;
@@ -94,6 +99,7 @@ fn main() -> ! {
         .build(alloc)
         .unwrap();
     let mut data = VendorData::new(alloc);
+    let mut hid = Hid::new(alloc);
 
     let mut dev = UsbDeviceBuilder::new(alloc, UsbVidPid(USB_VID, USB_PID))
         .strings(&[StringDescriptors::default()
@@ -121,6 +127,11 @@ fn main() -> ! {
     let mut status_pkt = [0u8; 4 + 16];
     let mut seq_out: u8 = 0;
     let mut rx = [0u8; 64];
+    // HID reports from the app, in order; a tap is two reports a few ms apart, a swipe is many.
+    let mut hid_q = [[0u8; hid::MAX_REPORT]; 16];
+    let mut hid_len = [0u8; 16];
+    let mut hid_head: usize = 0;
+    let mut hid_tail: usize = 0;
     let mut iso = [0u8; 256];
     let mut last_status = timer.get_counter();
     let mut last_led = timer.get_counter();
@@ -128,7 +139,7 @@ fn main() -> ! {
 
     loop {
         watchdog.feed();
-        dev.poll(&mut [&mut audio, &mut data]);
+        dev.poll(&mut [&mut audio, &mut data, &mut hid]);
         let configured = dev.state() == UsbDeviceState::Configured;
         let spk_active = configured && audio.output_alt_setting().unwrap_or(0) == 1;
         let mic_active = configured && audio.input_alt_setting().unwrap_or(0) == 1;
@@ -209,10 +220,29 @@ fn main() -> ! {
                         Some(&CTRL_STATUS) => status_pending = true,
                         _ => {}
                     },
+                    T_HID => {
+                        let next = (hid_tail + 1) % hid_q.len();
+                        if !payload.is_empty() && payload.len() <= hid::MAX_REPORT && next != hid_head {
+                            hid_q[hid_tail][..payload.len()].copy_from_slice(payload);
+                            hid_len[hid_tail] = payload.len() as u8;
+                            hid_tail = next;
+                        }
+                    }
                     _ => {}
                 }
                 i = end;
             }
+        }
+
+        // ---- us -> phone: queued HID reports, one per interrupt transfer
+        if configured && hid_head != hid_tail {
+            let n = hid_len[hid_head] as usize;
+            if hid.write(&hid_q[hid_head][..n]).is_ok() {
+                hid_head = (hid_head + 1) % hid_q.len();
+            }
+        } else if !configured {
+            hid_head = 0;
+            hid_tail = 0;
         }
 
         // ---- us -> app: caller PCM in 30-sample packets, plus periodic status

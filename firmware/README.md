@@ -5,6 +5,7 @@
 | `pocket-link-fw/` | RP2040 firmware (Rust). Prebuilt: **`pocket-link-fw.uf2`** |
 | `pocket-link-fw/PROTOCOL.md` | USB interfaces and the app ⇄ adapter data protocol |
 | `tools/link_pc_test.py` | Bench test from a Linux PC: status, two-way audio loopback (pass/fail), bootloader |
+| `tools/link_input_bench.py` | Tap, swipe and type on the phone through the adapter's HID interface, over adb |
 | `android-test/` | Android test app. Prebuilt: **`PocketLinkTest.apk`** |
 | `hosttest/` | Host-side checks: USB descriptor dump + validator, resampler frequency response |
 
@@ -13,10 +14,22 @@ Status (2026-10-08): **works end to end on a real call** with a Waveshare RP2040
 and the bot holds a conversation (replies start ~1.5 s after the caller stops; the caller reported very good quality).
 PC loopback passes in both directions. Pocket Link boards are next.
 
+Firmware 0.2 (2026-10-20) adds a **HID interface**: a touch screen, a keyboard and a consumer-control block. The
+Pocket app sends finished reports over the data channel (packet `0x04`) and the phone takes them as touches and
+keys on its own display: taps, long presses, swipes, typing (ASCII as keystrokes, anything else pasted from the
+clipboard), Back, Home and recents. Tested on the Motorola edge 60 (Android 17): the kernel's `hid-multitouch`
+driver binds it and marks it a direct touch screen; the USB headset side is unchanged. This is what lets a
+multimodal model drive other apps on the phone with nothing but the adapter, no accessibility service.
+
 Lessons from bring-up:
 * The headphones **must be stereo**. A mono USB output makes Android 16's mixer abort audioserver
   (`HAL channel mask 0x1 not supported for mixed output`), the headset never becomes available and the call stays
   on the earpiece. The firmware advertises 48 kHz stereo and averages L/R; the mic stays mono.
+* The touch report **must carry Contact ID and Contact Count**. Without them the generic HID driver takes the
+  device and does not set `INPUT_PROP_DIRECT`, and Android then treats the touch screen as a pointer. With them
+  `hid-multitouch` binds and Android sees `TOUCH | TOUCH_MT` on the built-in display.
+* Android hides its on-screen keyboard while a USB keyboard is attached unless Settings → Physical keyboard →
+  "Use on-screen keyboard" is on (the Motorola had it on).
 * Android's USB permission dialog appears on every plug-in for this test app. The real app should use a
   `USB_DEVICE_ATTACHED` intent filter with a device filter so the user can tick "always".
 
