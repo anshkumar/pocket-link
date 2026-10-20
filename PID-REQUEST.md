@@ -1,23 +1,38 @@
-# pid.codes request (draft)
+# pid.codes request
 
-pid.codes allocates USB PIDs under vendor ID `0x1209` to open-source hardware projects. The request is a
-pull request against https://github.com/pid.codes/pid.codes adding a file, once this folder is published
-at a public URL. Fill in the PID they assign and the repository link.
+pid.codes allocates USB product IDs under vendor ID `0x1209` to open-source hardware. The request is a
+pull request against `pidcodes/pidcodes.github.com` adding two files. Eligibility (met by this
+repository): public source with modifiable PCB design files and firmware, both under recognised
+open licences, with the licence files present.
+
+1. `org/pocket/index.md`
+
+```
+---
+layout: org
+title: Pocket
+site: https://pocketide.com/
+---
+Pocket makes AI teammates that work from a phone. Pocket Link is its open USB-C adapter that lets a bot
+hear and speak on an Android phone's own calls.
+```
+
+2. `1209/<PID>/index.md`, where `<PID>` is an unused number from https://pid.codes/1209/ (not in the
+reserved `0xxx`/`1xxx` ranges):
 
 ```
 ---
 layout: pid
-pid: 0x____          # assigned on allocation
-vendor: "Pocket"
-product: "Pocket Link"
-description: "USB-C phone call adapter: UAC 1.0 headset plus a vendor bulk data channel, RP2040"
-license: "Hardware CERN-OHL-P-2.0, firmware Apache-2.0"
-owner: "Pocket"
-site: "https://pocketide.com/pocket-link"
-source: "https://github.com/<org>/pocket-link"
+title: Pocket Link
+owner: pocket
+license: CERN-OHL-P-2.0 (hardware), Apache-2.0 (firmware)
+site: https://pocketide.com/pocket-link
+source: https://github.com/anshkumar/pocket-link
 ---
+USB-C adapter for Android phones: a USB Audio Class 1.0 headset (mic in, stereo headphones out) plus a
+vendor bulk data channel, on an RP2040. The phone routes call audio to the headset interfaces; the Pocket
+app claims the data interface and carries the audio to and from a voice agent. Firmware in Rust.
 ```
 
-Checklist before sending: the public repository contains the board files, the firmware source and the
-licences above; the firmware's `PROTOCOL.md` still says `1209:0001` and must be updated to the new PID in
-the same change as the firmware descriptor.
+After allocation: change the PID in the firmware's USB descriptor and in `firmware/pocket-link-fw/PROTOCOL.md`
+(which still says the test ID `1209:0001`) in the same commit, and rebuild the `.uf2`.
