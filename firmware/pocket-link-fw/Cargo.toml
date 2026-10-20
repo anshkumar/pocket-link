@@ -1,0 +1,29 @@
+[package]
+name = "pocket-link-fw"
+version = "0.1.0"
+edition = "2021"
+description = "Pocket Link: USB-C phone adapter firmware (UAC headset + vendor data channel)"
+license = "Apache-2.0"
+
+[dependencies]
+cortex-m = "=0.7.7"
+cortex-m-rt = "=0.7.5"
+rp2040-hal = { version = "=0.11.0", features = ["rt", "critical-section-impl"] }
+rp2040-boot2 = "0.3"
+usb-device = { version = "=0.3.2", features = ["control-buffer-256"] }
+usbd-audio = { path = "third_party/usbd-audio" }
+panic-halt = "0.2"
+fugit = "0.3"
+critical-section = "1.1"
+embedded-hal = "1.0"
+
+[profile.release]
+opt-level = "s"
+debug = 2
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[profile.dev]
+opt-level = 1
+panic = "abort"

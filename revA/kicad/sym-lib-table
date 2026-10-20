@@ -1,0 +1,3 @@
+(sym_lib_table
+  (lib (name "Pocket")(type "KiCad")(uri "${KIPRJMOD}/pocket.kicad_sym")(options "")(descr "Pocket Hub-8 local symbols"))
+)
