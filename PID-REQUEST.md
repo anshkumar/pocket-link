@@ -35,3 +35,5 @@ app claims the data interface and carries the audio to and from a voice agent. F
 
 After allocation: change the PID in the firmware's USB descriptor and in `firmware/pocket-link-fw/PROTOCOL.md`
 (which still says the test ID `1209:0001`) in the same commit, and rebuild the `.uf2`.
+
+Submitted 2026-10-20 as https://github.com/pidcodes/pidcodes.github.com/pull/1326 (from the fork anshkumar/pidcodes.github.com, two commits on master).
