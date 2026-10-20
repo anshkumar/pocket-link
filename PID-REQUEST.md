@@ -17,8 +17,7 @@ Pocket makes AI teammates that work from a phone. Pocket Link is its open USB-C 
 hear and speak on an Android phone's own calls.
 ```
 
-2. `1209/<PID>/index.md`, where `<PID>` is an unused number from https://pid.codes/1209/ (not in the
-reserved `0xxx`/`1xxx` ranges):
+2. `1209/C417/index.md` (`0xC417` was unused on https://pid.codes/1209/ on 2026-10-20; re-check before sending):
 
 ```
 ---
