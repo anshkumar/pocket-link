@@ -1,7 +1,7 @@
 # Pocket Link
 
 A small USB-C adapter that lets a [Pocket](https://pocketide.com) bot hear and speak on an Android
-phone's own calls. The phone sees a USB headset, so Android routes the call's audio to it; a second
+phone's own calls, and (firmware 0.2) tap and type on the phone for it. The phone sees a USB headset, so Android routes the call's audio to it; a second
 channel on the same plug carries that audio to the Pocket app, which streams it to the voice engine over
 the phone's own internet. No Bluetooth, no Wi-Fi, no battery, nothing stored on the device.
 
@@ -16,6 +16,7 @@ caller ⇄ phone (cellular / WhatsApp call)
    USB-C ⇄ Pocket Link (RP2040)
            │  interface 1–2: USB Audio (UAC 1.0) headset, mic in / headphones out
            │  interface 3:   vendor bulk data channel
+           │  interface 4:   HID touch screen + keyboard (firmware 0.2): the app's taps and keystrokes
            ▼
    Pocket app (USB host API) ⇄ WebSocket ⇄ voice engine
 ```
@@ -24,9 +25,9 @@ caller ⇄ phone (cellular / WhatsApp call)
 |---|---|
 | `revA/` | The first board: KiCad project, Gerbers, BOM, CPL, STEP, schematic PDF, and `source/design.py`, the generator that is the single source of truth. 31 × 16 mm, 4-layer, board-edge USB-C plug. Proven on real calls (Motorola edge 60, Android 16) on 2026-10-08. |
 | `revB/` | The next board: the same circuit as a pod on the back of the phone with a short lead, two layers, under ₹500 to build. Plan and cost model; files follow. |
-| `firmware/pocket-link-fw/` | RP2040 firmware (Rust): TinyUSB-style composite device, 48 kHz ⇄ 16 kHz resampling, the data protocol. Prebuilt `pocket-link-fw.uf2`. |
+| `firmware/pocket-link-fw/` | RP2040 firmware (Rust): composite USB headset + data channel + HID touch screen/keyboard, 48 kHz ⇄ 16 kHz resampling, the data protocol. Prebuilt `pocket-link-fw.uf2`. |
 | `firmware/pocket-link-fw/PROTOCOL.md` | USB descriptors and the app ⇄ adapter packet protocol. The contract the Pocket app implements. |
-| `firmware/tools/` | `link_pc_test.py`: status, two-way loopback test and bootloader entry from a Linux PC. |
+| `firmware/tools/` | `link_pc_test.py`: status, two-way loopback test and bootloader entry from a Linux PC. `link_input_bench.py`: tap, swipe and type on the phone through the adapter, over adb. |
 | `firmware/hosttest/` | USB descriptor dump and validator; resampler frequency response. |
 | `firmware/android-test/` | A bare Android test app (Java, no Gradle) that talks to the adapter and a local voice engine. Useful for bring-up on a new phone. |
 | `COMPATIBILITY.md` | Which phones work. Please add yours. |
